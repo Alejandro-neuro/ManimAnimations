@@ -25,7 +25,7 @@ def draw_glow_nodes(G,pos, max_size=500, min_size=200, alpha=0.02):
 
         nx.draw_networkx_nodes(G, Pos, node_color='white', node_size=min_size+5*(i+1), alpha=alpha, cmap=plt.cm.gray_r )
     nx.draw_networkx_nodes(G, pos, node_color='white', node_size=150, alpha=1, cmap=plt.cm.gray_r )
-
+    plt.grid(False)
 
     ax.set_facecolor('black')
     fig.set_facecolor('black')
