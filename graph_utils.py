@@ -31,3 +31,19 @@ def draw_glow_nodes(G,pos, max_size=500, min_size=200, alpha=0.02):
     fig.set_facecolor('black')
     #mplcyberpunk.add_glow_effects()
     plt.show()
+
+def propagation_step(A, x):
+    w = np.sum(A,axis=0)
+    w[w==0] = 1
+    xA = np.matmul(x,A)/w
+    xA[np.isnan(xA)] = 0
+    x1 = xA - x
+    x1[x1<0.8] = 0
+    return x1
+
+
+def extend_time_series(timeseries, samples, n_nodes):
+    for i in range(samples):
+        timeseries.append(np.zeros(n_nodes))
+
+    return timeseries
