@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hierarchical Edge Bundling</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+<div>
+    <button onclick="downloadDiagram()">Download as SVG</button>
+</div>
+
+<script>
+    var width = 1000;
+    var height = 1000;
+    var outerRadius = Math.min(width, height) / 2 - 10;
+
+    var svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+    var neonColors = ['#FF00FF', '#00FFFF', '#FFFF00', '#FFA500', '#FF4500', '#8A2BE2', '#00FF00', '#FF1493', '#00FF7F', '#FFD700'];
+    function getNeonColor(cluster) {
+        var neonColors = ['#FF00FF', '#00FFFF', '#FFFF00', '#FFA500', '#FF4500', '#8A2BE2', '#00FF00', '#FF1493', '#00FF7F', '#FFD700'];
+        return neonColors[cluster];
+    }
+
+    var nodes = d3.range(50).map(function(i) {
+        return {
+            index: i,
+            cluster: Math.floor(i / 5),  // Assign each node to one of 10 clusters
+            color: getNeonColor(Math.floor(i / 5)) // Assign a different neon color to each cluster
+        };
+    });
+
+    // Create random connections
+    var connections = [];
+    nodes.forEach(function(source, i) {
+        nodes.forEach(function(target, j) {
+            if (i !== j) {
+                var probability = (source.cluster === target.cluster) ? 0.5 : 0.1;
+                if (Math.random() < probability) {
+                    connections.push({ source: source, target: target });
+                }
+            }
+        });
+    });
+
+    // Create hierarchy and cluster layout
+    var root = d3.hierarchy({ children: nodes });
+
+    var cluster = d3.cluster()
+        .size([360, outerRadius]);
+
+    var hierarchyData = cluster(root);
+
+    // Draw edges
+    var line = d3.radialLine()
+        .curve(d3.curveBundle.beta(0.85))
+        .radius(function(d) { return d.y; })
+        .angle(function(d) { return d.x / 180 * Math.PI; });
+
+    var link2 = svg.append("g").selectAll(".link"),
+    node2 = svg.append("g").selectAll(".node");
+
+    link2 = link2
+        .data(connections)
+        .enter().append("path")
+        .attr("class", "link")
+        .attr("d", line)
+        .style("fill", "none")
+        .style("stroke", "#333");
+
+    // Draw nodes
+    node2 = node2
+        .data(hierarchyData.descendants())
+        .enter().append("circle")
+        .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+        .attr("r", 8)
+        .style("fill", function(d) { return d.data.color; })
+        .style("stroke", "#333");
+
+    // Function to download the diagram as SVG
+    function downloadDiagram() {
+        var svgString = getSVGString(svg.node());
+        var blob = new Blob([svgString], { type: "image/svg+xml" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "hierarchical_edge_bundling.svg";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Function to get SVG string from SVG node
+    function getSVGString(svgNode) {
+        svgNode.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        var svgString = new XMLSerializer().serializeToString(svgNode);
+        return svgString;
+    }
+
+    // Lazily construct the package hierarchy from class names.
+    function packageHierarchy(classes) {
+      var map = {};
+
+      function find(name, data) {
+        var node = map[name], i;
+        if (!node) {
+          node = map[name] = data || {name: name, children: []};
+          if (name.length) {
+            node.parent = find(name.substring(0, i = name.lastIndexOf(".")));
+            node.parent.children.push(node);
+            node.key = name.substring(i + 1);
+          }
+        }
+        return node;
+      }
+
+      classes.forEach(function(d) {
+        find(d.name, d);
+      });
+
+      return d3.hierarchy(map[""]);
+    }
+
+    function packageImports(nodes) {
+      var map = {},
+          imports = [];
+
+      // Compute a map from name to node.
+      nodes.forEach(function(d) {
+        map[d.data.name] = d;
+      });
+
+      // For each import, construct a link from the source to target node.
+      nodes.forEach(function(d) {
+        if (d.data.imports) d.data.imports.forEach(function(i) {
+          imports.push(map[d.data.name].path(map[i]));
+        });
+      });
+
+      return imports;
+    }
+</script>
+
+</body>
+</html>
